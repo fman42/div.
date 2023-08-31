@@ -1,0 +1,51 @@
+version: "3.3"
+
+services:
+  mysql:
+    image: mysql:5.7.42
+    restart: on-failure
+    container_name: div_mysql
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DOCKER_DB_PORT:-3352}:3306"
+    volumes:
+      - ./docker/mysql/volumes/data:/var/lib/mysql
+    networks:
+      - div
+
+  app:
+    build:
+      context: ./
+      dockerfile: ./docker/app/Dockerfile
+    container_name: div_php
+    restart: on-failure
+    user: ${DOCKER_UID}:${DOCKER_GID}
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - mysql
+    networks:
+      - div
+
+  nginx:
+    image: nginx:1.21.6-alpine
+    container_name: div_nginx
+    restart: on-failure
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/volumes/config/:/etc/nginx/conf.d
+      - ./docker/nginx/volumes/data:/var/log/nginx
+    ports:
+      - "${DOCKER_WEBSERVER_PORT:-8085}:80"
+    depends_on:
+      - app
+    networks:
+      - div
+networks:
+  div:
+    driver: bridge
+
